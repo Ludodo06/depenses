@@ -180,6 +180,7 @@ async function initDb(){
     SEED=sd.tx;DOCS_SEED=sd.docs||[];
     const j=await FB.loadState();
     if(j){S={...S,...JSON.parse(j)};}
+    dedupeDocs();
     build();render();
     FB.watchInbox(list=>{INBOX=list.map(x=>({...x.data,id:'u'+x.id,src:'ubs'}));build();render();});
     return true;
@@ -564,12 +565,23 @@ async function addDoc(){
     const path='docs/'+id+'.'+ext;
     // A month in the file name (e.g. releve-2026-03.pdf) wins over the form value
     const m=f.name.match(/(\d{4})-(\d{2})/),period=m?m[1]+'-'+m[2]:per0;
-    const label=fs.length>1?f.name.replace(/\.[^.]+$/,''):(name||kind);
+    if(DOCS_SEED.concat(S.docs).some(x=>sameDoc(x,{kind,period,size:f.size}))){toast('Déjà présent : '+f.name);continue;}
+    const label=name||(/^releve-/i.test(f.name)?'Relevé de compte UBS':fs.length>1?f.name.replace(/\.[^.]+$/,''):kind);
     try{toast('Envoi '+(n+1)+'/'+fs.length+'…');await FB.upload(path,f);
       S.docs.push({id,path,name:label,kind,period,size:f.size});n++;
     }catch(e){toast('Échec : '+f.name);break;}
   }
   if(n){persist();render();toast(n>1?n+' documents ajoutés':'Document ajouté');}
+}
+// Same kind, month and size as an existing document: same file
+const sameDoc=(a,b)=>a.kind===b.kind&&a.period===b.period&&a.size===b.size;
+function dedupeDocs(){
+  const keep=[],drop=[];
+  for(const d of S.docs){(DOCS_SEED.concat(keep).some(x=>sameDoc(x,d))?drop:keep).push(d);}
+  if(!drop.length)return;
+  S.docs=keep;persist();
+  drop.forEach(d=>{if(d.path)FB.remove(d.path).catch(()=>{});});
+  toast(drop.length+' doublon(s) supprimé(s)');
 }
 async function openDoc(path){
   if(!path)return toast('Fichier introuvable');
