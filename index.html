@@ -39,7 +39,9 @@ nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width
 nav button[aria-current="page"]{color:var(--accent)}
 .brand{display:none}
 main{flex:1;min-width:0;padding:16px 16px 100px;max-width:980px;margin:0 auto;width:100%}
+nav button.dk{display:none}
 @media(min-width:860px){
+  nav button.dk{display:flex}
   nav{top:0;bottom:auto;right:auto;width:208px;height:100%;flex-direction:column;justify-content:flex-start;gap:4px;padding:20px 12px;border-top:0;border-right:1px solid var(--line)}
   nav button{flex-direction:row;gap:12px;font-size:14px;padding:10px 12px;width:100%;justify-content:flex-start}
   .brand{display:block;font-weight:700;font-size:17px;padding:4px 12px 16px;letter-spacing:-.02em}
@@ -474,8 +476,9 @@ function friendsData(){
 }
 function vMore(){
   const sub=ui.sub;
-  const tabs=[['confirm','À confirmer'],['docs','Documents'],['goals','Objectifs'],['trips','Voyages'],['friends','Amis'],['remind','Rappels'],['data','Données']];
+  const tabs=[['confirm','À confirmer'],['rec','Récurrents'],['docs','Documents'],['goals','Objectifs'],['trips','Voyages'],['friends','Amis'],['remind','Rappels'],['data','Données']];
   let body='';
+  if(sub==='rec')body=vRec().replace(/^<div class="head">.*?<\/div>/,'');
   if(sub==='confirm'){
     const c=TX.filter(t=>t.conf!=='Certain');
     const byCat={};c.forEach(x=>{((byCat[x.cat]=byCat[x.cat]||{})[x.nom]=byCat[x.cat][x.nom]||[]).push(x);});
@@ -631,7 +634,7 @@ function afterChange(){build();persist();render();}
 function render(){
   document.documentElement.dataset.theme=S.theme||'';if(!S.theme)delete document.documentElement.dataset.theme;
   const ms=months();if(!ui.month||!ms.includes(ui.month))ui.month=ms[ms.length-1];
-  $('#nav').innerHTML='<div class="brand">Mes dépenses</div>'+TABS.map(([k,l,i])=>`<button data-tab="${k}" ${(ui.tab==='more'&&ui.sub==='docs'?'docs':ui.tab)===k?'aria-current="page"':''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[i]}</svg>${l}</button>`).join('');
+  $('#nav').innerHTML='<div class="brand">Mes dépenses</div>'+TABS.map(([k,l,i])=>`<button data-tab="${k}" ${k==='rec'||k==='docs'?'class="dk"':''} ${(ui.tab==='more'&&ui.sub==='docs'?'docs':ui.tab)===k?'aria-current="page"':''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[i]}</svg>${l}</button>`).join('');
   const v={home:vHome,tx:vTx,budget:vBudget,rec:vRec,stats:vStats,more:vMore}[ui.tab];
   const keepQ=document.activeElement&&document.activeElement.id==='q';
   $('#view').innerHTML=v()+'<button class="fab" id="fab" aria-label="Ajouter une transaction">+</button>';
