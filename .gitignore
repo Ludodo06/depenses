@@ -1,0 +1,6 @@
+# Editors and system
+.vscode/
+.DS_Store
+# Personal data never goes in this repository
+*.json
+*.pdf
