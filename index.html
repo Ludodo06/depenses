@@ -316,9 +316,9 @@ function reminders(){
   const today=todayISO(),y=+today.slice(0,4),out=[];
   const auto=[[`tax${y}`,`Déclaration d’impôts ${y-1}`,`${y}-03-15`],[`tax${y+1}`,`Déclaration d’impôts ${y}`,`${y+1}-03-15`],[`p3${y}`,`Versement 3e pilier ${y}`,`${y}-12-31`]];
   auto.forEach(([id,label,date])=>out.push({id,label,date,auto:true}));
-  recList().filter(x=>!['Courses','Transport'].includes(x.cat)).forEach(x=>out.push({id:'r'+x.k+x.next,label:x.k+' · '+eur2(x.perM)+' CHF',date:x.next,auto:true,rec:true}));
+  recList().filter(x=>!['Courses','Transport'].includes(x.cat)).forEach(x=>out.push({id:'r'+x.k+x.next,label:x.k+' · '+eur2(x.perM)+' CHF',date:x.next,auto:true,rec:true,key:'rk'+x.k}));
   S.reminders.forEach(r=>out.push(r));
-  return out.filter(r=>!S.dismissed.includes(r.id)&&!r.done).sort((a,b)=>a.date.localeCompare(b.date));
+  return out.filter(r=>!S.dismissed.includes(r.id)&&!(r.key&&S.dismissed.includes(r.key))&&!r.done).sort((a,b)=>a.date.localeCompare(b.date));
 }
 function tripTx(tr){return TX.filter(t=>isSpend(t)&&!t.rec&&t.date>=tr.start&&t.date<=tr.end&&t.cat!=='Loyer & logement');}
 // Runs of purchases abroad (gap of 3 days or less) that no trip covers yet
@@ -549,7 +549,7 @@ function vMore(){
   }
   if(sub==='remind'){
     const r=reminders();
-    body=`<div class="card" style="padding:4px 16px 12px">${r.map(x=>`<div class="row"><span class="grow"><div class="t">${esc(x.label)}</div><div class="s">${x.date<todayISO()?'<b class="neg">en retard</b> · ':''}${x.date.split('-').reverse().join('.')}${x.auto?' · automatique':''}</div></span><button class="btn ghost sm" data-rdone="${esc(x.id)}">Fait</button></div>`).join('')||'<div class="empty">Aucun rappel</div>'}</div>
+    body=`<div class="card" style="padding:4px 16px 12px">${r.map(x=>`<div class="row"><span class="grow"><div class="t">${esc(x.label)}</div><div class="s">${x.date<todayISO()?'<b class="neg">en retard</b> · ':''}${x.date.split('-').reverse().join('.')}${x.auto?' · automatique':''}</div></span><button class="btn ghost sm" data-rdone="${esc(x.id)}">Fait</button><button class="btn danger sm" data-rdel2="${esc(x.key||x.id)}" aria-label="Supprimer le rappel">✕</button></div>`).join('')||'<div class="empty">Aucun rappel</div>'}</div>
     <div class="card" style="margin-top:14px"><h2>Nouveau rappel</h2><div class="f"><label>Quoi<input class="in" id="rlabel" placeholder="Payer la facture Serafe…"></label><label>Quand<input class="in" id="rdate" type="date"></label><button class="btn" id="rnew">Ajouter</button></div>
     <p class="note" style="margin-top:8px">Les rappels automatiques couvrent la déclaration d’impôts (15 mars, canton de Vaud), le 3e pilier (31 décembre) et les factures récurrentes.</p></div>`;
   }
@@ -652,6 +652,7 @@ document.addEventListener('click',e=>{
   if(b=T('[data-dnom]'))return openDetail('nom',b.dataset.dnom);
   if(b=T('[data-filtercat]')){$('#layer').innerHTML='';ui.cat=b.dataset.filtercat;ui.cMonth=false;ui.q='';return go('tx');}
   if(b=T('[data-rdone]')){const id=b.dataset.rdone,r=S.reminders.find(x=>x.id===id);if(r)r.done=true;else S.dismissed.push(id);persist();toast('Rappel terminé');return render();}
+  if(b=T('[data-rdel2]')){const id=b.dataset.rdel2;if(S.reminders.some(x=>x.id===id))S.reminders=S.reminders.filter(x=>x.id!==id);else S.dismissed.push(id);persist();toast('Rappel supprimé');return render();}
   if(T('#rnew')){const label=$('#rlabel').value.trim(),date=$('#rdate').value;if(!label||!date)return toast('Texte et date requis');S.reminders.push({id:'m'+Date.now().toString(36),label,date});persist();return render();}
   if(T('#trnew')){const name=$('#trname').value.trim(),start=$('#trstart').value,end=$('#trend').value;if(!name||!start||!end||end<start)return toast('Nom et dates requis');S.trips.push({id:'t'+Date.now().toString(36),name,start,end,budget:+$('#trbudget').value||0});persist();return render();}
   if(b=T('[data-tripadd]')){const[start,end,name]=b.dataset.tripadd.split('|');S.trips.push({id:'t'+Date.now().toString(36),name,start,end,budget:0});persist();toast('Voyage créé');return render();}
