@@ -591,7 +591,7 @@ window.startApp=initDb;
 #gate .glogo{width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#6366f1,#22c55e);color:#fff;font-size:34px;display:flex;align-items:center;justify-content:center;margin:0 auto}</style>
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import {getAuth,onAuthStateChanged,signInWithPopup,signInWithRedirect,getRedirectResult,GoogleAuthProvider,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import {getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import {firebaseConfig} from './firebase-config.js';
 const app=initializeApp(firebaseConfig),auth=getAuth(app),fs=getFirestore(app);
@@ -635,9 +635,8 @@ g('gpdf').onchange=async e=>{
 };
 g('glogin').onclick=async()=>{
   const p=new GoogleAuthProvider();
-  try{await signInWithPopup(auth,p);}catch(e){if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')await signInWithRedirect(auth,p);else msg('Connexion annulée');}
+  try{await signInWithPopup(auth,p);}catch(e){msg(e.code==='auth/popup-blocked'?'Fenêtre bloquée : autorise les pop-ups pour ce site puis réessaie':'Connexion annulée');}
 };
-getRedirectResult(auth).catch(()=>{});
 onAuthStateChanged(auth,u=>{if(u){msg('Chargement…');boot();}else{g('gate').style.display='flex';msg('Connexion requise');}});
 window.logout=()=>signOut(auth).then(()=>location.reload());
 </script>
