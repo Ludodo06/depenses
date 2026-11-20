@@ -454,7 +454,7 @@ function vMore(){
     <div class="tools"><button class="btn" id="expjson">Exporter JSON</button><button class="btn ghost" id="expcsv">Exporter CSV</button><button class="btn ghost" id="thm">Thème : ${S.theme==='dark'?'sombre':S.theme==='light'?'clair':'auto'}</button></div></div>
     <div class="card" style="margin-top:14px"><h2>Importer une sauvegarde</h2><textarea class="in" id="impt" placeholder="Colle ici le JSON exporté"></textarea><div class="tools" style="margin-top:8px"><button class="btn ghost" id="impbtn">Importer</button></div></div>
     <div class="card" style="margin-top:14px"><h2>Règles automatiques</h2><p class="note" style="margin-bottom:8px">Quand tu changes la catégorie d’un commerçant, tu peux l’appliquer à tous ses achats actuels et futurs.</p>${S.rules.map((r,i)=>`<div class="row"><span class="dot" style="background:${color(r.cat)}"></span><span class="grow t">${esc(r.nom)} → ${esc(r.cat)}</span><button class="btn danger sm" data-rdel="${i}">Retirer</button></div>`).join('')||'<div class="note">Aucune règle.</div>'}</div>
-    <div class="card" style="margin-top:14px"><h2>Zone sensible</h2><button class="btn danger" id="reset">Revenir aux données importées</button></div>`;
+    <div class="card" style="margin-top:14px"><h2>Zone sensible</h2><div class="tools"><button class="btn danger" id="reset">Revenir aux données importées</button><button class="btn danger" id="wipe">Tout effacer et réimporter</button></div><p class="note" style="margin-top:8px">« Tout effacer » supprime en ligne les transactions, tes modifications et tous les documents, puis rouvre l’écran d’import.</p></div>`;
   }
   return `<div class="head"><h1>Plus</h1></div><div class="scroll-x">${tabs.map(([k,l])=>`<button class="pill" data-sub="${k}" aria-pressed="${sub===k}">${l}</button>`).join('')}</div>${body}`;
 }
@@ -540,9 +540,10 @@ document.addEventListener('click',e=>{
   if(T('#expjson'))return doExport('depenses.json',JSON.stringify({version:1,state:S,transactions:TX},null,1),'application/json',true);
   if(T('#expcsv')){const rows=[COLS.join(',')].concat(TX.map(t=>COLS.map(c=>'"'+String(t[c]).replace(/"/g,'""')+'"').join(',')));return doExport('depenses.csv',rows.join('\n'),'text/csv');}
   if(T('#impbtn')){try{const j=JSON.parse($('#impt').value);if(!j.state)throw 0;S={...S,...j.state};afterChange();toast('Sauvegarde importée');}catch(x){toast('JSON invalide');}return;}
+  if(T('#wipe')){if(!confirmWipe){confirmWipe=true;$('#wipe').textContent='Confirmer : tout supprimer ?';return;}confirmWipe=false;toast('Suppression…');clearTimeout(saveT);FB.wipe().then(()=>{try{localStorage.removeItem('depenses-v1');}catch(e){}location.reload();}).catch(()=>toast('Suppression impossible'));return;}
   if(T('#reset')){if(!confirmReset){confirmReset=true;$('#reset').textContent='Confirmer : tout effacer ?';return;}confirmReset=false;S={edits:{},added:[],deleted:[],budgets:{...DEFAULT_BUDGETS},goals:[],rules:[],docs:S.docs,theme:S.theme};return afterChange();}
 });
-let confirmReset=false;
+let confirmReset=false,confirmWipe=false;
 document.addEventListener('input',e=>{
   if(e.target.id==='q'){ui.q=e.target.value;render();}
 });
@@ -614,7 +615,7 @@ window.startApp=initDb;
 <script type="module">
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import {getAuth,onAuthStateChanged,signInWithPopup,GoogleAuthProvider,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,onSnapshot} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,onSnapshot,getDocs} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import {firebaseConfig} from './firebase-config.js';
 const app=initializeApp(firebaseConfig),auth=getAuth(app),fs=getFirestore(app);
 const CH=700000,kid=p=>p.replace(/[^a-zA-Z0-9.-]/g,'_');
@@ -632,6 +633,9 @@ window.FB={
     const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     const ext=path.split('.').pop().toLowerCase(),mime={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg'}[ext]||'application/octet-stream';
     return URL.createObjectURL(new Blob([u],{type:mime}));},
+  // Deletes every stored file plus the imported data and the saved state
+  async wipe(){const snap=await getDocs(collection(fs,'files'));for(const d of snap.docs)await deleteDoc(d.ref);
+    await deleteDoc(doc(fs,'app','state'));await deleteDoc(doc(fs,'app','seed'));},
   async remove(path){const k=kid(path),f=await getDoc(doc(fs,'files',k+'__0'));if(!f.exists())return;
     for(let i=0;i<f.data().n;i++)await deleteDoc(doc(fs,'files',k+'__'+i));}
 };
