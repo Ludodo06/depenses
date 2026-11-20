@@ -422,7 +422,7 @@ function vMore(){
     body=`<div class="tools"><select class="in" id="dyear" aria-label="Année">${years.map(x=>`<option ${x===y?'selected':''}>${x}</option>`).join('')}</select><span class="note" style="align-self:center">${mine.length} document${mine.length>1?'s':''} pour ${y}</span></div>
     <div class="card" style="padding:4px 16px 12px">${mine.map(d=>`<div class="row"><span class="ico" style="background:var(--accent-soft);color:var(--accent)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span class="grow"><div class="t">${esc(d.name||d.kind)}</div><div class="s">${esc(d.kind)} · <span style="text-transform:capitalize">${ml(d.period)}</span> · ${fmtS(d.size||0)}</div></span><button class="btn ghost sm" data-docopen="${d.path||''}">Ouvrir</button>${d.seed?'':`<button class="btn danger sm" data-docdel="${d.id}" aria-label="Supprimer">✕</button>`}</div>`).join('')||'<div class="empty">Aucun document pour cette année</div>'}</div>
     <div class="card" style="margin-top:14px"><h2>Ajouter un document</h2><div class="f">
-      <label>Fichier (PDF ou image)<input class="in" id="docfile" type="file" accept="application/pdf,image/png,image/jpeg"></label>
+      <label>Fichiers (PDF ou images, plusieurs possibles)<input class="in" id="docfile" type="file" accept="application/pdf,image/png,image/jpeg" multiple></label>
       <div class="two"><label>Type<select class="in" id="dockind"><option>Relevé de compte</option><option>Attestation fiscale</option><option>Certificat de salaire</option><option>Facture</option><option>Autre</option></select></label><label>Mois concerné<input class="in" id="docper" type="month" value="${y}-${ym(todayISO()).slice(5)}"></label></div>
       <label>Nom (optionnel)<input class="in" id="docname" placeholder="Ex. Attestation 3e pilier"></label>
       <button class="btn" id="docadd">Ajouter</button></div></div>
@@ -555,14 +555,21 @@ document.addEventListener('change',e=>{
   if(t.dataset&&t.dataset.budget!==undefined){const v=parseFloat(t.value);if(v>0)S.budgets[t.dataset.budget]=v;else delete S.budgets[t.dataset.budget];persist();render();}
 });
 async function addDoc(){
-  const f=$('#docfile').files[0];if(!f)return toast('Choisis un fichier');
-  const kind=$('#dockind').value,period=$('#docper').value||(ui.dyear+'-01'),name=$('#docname').value.trim();
-  const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  const ext=(f.name.split('.').pop()||'pdf').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'pdf';
-  const path='docs/'+id+'.'+ext;
-  try{toast('Envoi…');await FB.upload(path,f);
-    S.docs.push({id,path,name:name||kind,kind,period,size:f.size});persist();render();toast('Document ajouté');
-  }catch(e){toast('Envoi impossible, réessaie');}
+  const fs=[...$('#docfile').files];if(!fs.length)return toast('Choisis un fichier');
+  const kind=$('#dockind').value,per0=$('#docper').value||(ui.dyear+'-01'),name=$('#docname').value.trim();
+  let n=0;
+  for(const f of fs){
+    const id='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const ext=(f.name.split('.').pop()||'pdf').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'pdf';
+    const path='docs/'+id+'.'+ext;
+    // A month in the file name (e.g. releve-2026-03.pdf) wins over the form value
+    const m=f.name.match(/(\d{4})-(\d{2})/),period=m?m[1]+'-'+m[2]:per0;
+    const label=fs.length>1?f.name.replace(/\.[^.]+$/,''):(name||kind);
+    try{toast('Envoi '+(n+1)+'/'+fs.length+'…');await FB.upload(path,f);
+      S.docs.push({id,path,name:label,kind,period,size:f.size});n++;
+    }catch(e){toast('Échec : '+f.name);break;}
+  }
+  if(n){persist();render();toast(n>1?n+' documents ajoutés':'Document ajouté');}
 }
 async function openDoc(path){
   if(!path)return toast('Fichier introuvable');
