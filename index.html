@@ -204,14 +204,14 @@ const spendBy=(list)=>{const o={};list.filter(isSpend).forEach(t=>o[t.cat]=(o[t.
 const initials=n=>n.replace(/[^\p{L}\p{N} ]/gu,'').trim().slice(0,2).toUpperCase();
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),2200);}
 const todayISO=()=>new Date().toISOString().slice(0,10);
-const ICONS={
+const ICONS={doc:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
  repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 013-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 01-3 3H3"/>',
  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
  more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
-const TABS=[['home','Accueil','home'],['tx','Transactions','list'],['budget','Budgets','target'],['rec','Récurrents','repeat'],['stats','Analyses','chart'],['more','Plus','more']];
+const TABS=[['home','Accueil','home'],['tx','Transactions','list'],['budget','Budgets','target'],['rec','Récurrents','repeat'],['stats','Analyses','chart'],['docs','Documents','doc'],['more','Plus','more']];
 
 /* ---------- charts ---------- */
 function donut(data,size=168,center=''){
@@ -500,13 +500,13 @@ function afterChange(){build();persist();render();}
 function render(){
   document.documentElement.dataset.theme=S.theme||'';if(!S.theme)delete document.documentElement.dataset.theme;
   const ms=months();if(!ui.month||!ms.includes(ui.month))ui.month=ms[ms.length-1];
-  $('#nav').innerHTML='<div class="brand">Mes dépenses</div>'+TABS.map(([k,l,i])=>`<button data-tab="${k}" ${ui.tab===k?'aria-current="page"':''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[i]}</svg>${l}</button>`).join('');
+  $('#nav').innerHTML='<div class="brand">Mes dépenses</div>'+TABS.map(([k,l,i])=>`<button data-tab="${k}" ${(ui.tab==='more'&&ui.sub==='docs'?'docs':ui.tab)===k?'aria-current="page"':''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[i]}</svg>${l}</button>`).join('');
   const v={home:vHome,tx:vTx,budget:vBudget,rec:vRec,stats:vStats,more:vMore}[ui.tab];
   const keepQ=document.activeElement&&document.activeElement.id==='q';
   $('#view').innerHTML=v()+'<button class="fab" id="fab" aria-label="Ajouter une transaction">+</button>';
   if(keepQ){const q=$('#q');q.focus();q.setSelectionRange(q.value.length,q.value.length);}
 }
-function go(tab,sub){if(tab==='more'&&sub==='confirm'&&ui.sub!=='confirm'||sub==='confirm'&&ui.tab!=='more'){ui.cTotal=0;ui.skip=[];ui.undo=null;}ui.tab=tab;if(sub)ui.sub=sub;render();window.scrollTo(0,0);}
+function go(tab,sub){if(tab==='docs'){tab='more';sub='docs';}else if(tab==='more'&&!sub&&ui.sub==='docs')sub='confirm';if(tab==='more'&&sub==='confirm'&&ui.sub!=='confirm'||sub==='confirm'&&ui.tab!=='more'){ui.cTotal=0;ui.skip=[];ui.undo=null;}ui.tab=tab;if(sub)ui.sub=sub;render();window.scrollTo(0,0);}
 document.addEventListener('click',e=>{
   const T=e.target.closest.bind(e.target);let b;
   if(b=T('[data-tab]'))return go(b.dataset.tab);
